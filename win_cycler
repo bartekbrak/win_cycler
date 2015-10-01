@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+# raises a window specified by xwin class (WM_CLASS) or open the specified program
+
+
+if [ "$1" == "-h" ] || [ "$1" == "--help" ] || [ $# -eq 0 ]; then
+    echo "$0 'command to call' WM_CLASS"
+    echo "eg."
+    echo "   $0 pycharm sun-awt-X11-XFramePeer.jetbrains-pycharm"
+    echo "   $0 sublime_text sublime_text.Sublime_text"
+    echo "   $0 chromium-browser chromium-browser.Chromium-browser"
+    echo "   $0 firefox Navigator.Firefox"
+    echo "   $0 mysql-workbench mysql-workbench-bin.Mysql-workbench-bin"
+    echo "   $0 terminator terminator.Terminator"
+    echo
+    echo "or:"
+    echo "$0 [-f|--find|-h|--help|--uninstall]"
+    echo "-f|--find - find window class (WM_CLASS) using mouse"
+    echo "-h|--help - this help"
+    echo "--uninstall - remove win_cycler"
+    echo
+    exit
+elif [ "$1" == "-f" ] || [ "$1" == "--find" ]; then
+    echo "Click on a window to find its WM_CLASS"
+    class=$(xprop WM_CLASS | sed 's/.*"\(.*\)", "\(.*\)"/\1.\2/g')
+    echo The WM_CLASS is $class
+    echo Sample usage:
+    echo "    $0 program_to_call $class"
+    exit
+elif [ "$1" == "--uninstall" ]; then
+    rm -i $0
+    exit
+fi
+
+win_class=$2
+
+# get id of the focused window
+active_win_id=$(xprop -root | grep '^_NET_ACTIVE_W' | awk -F'# 0x' '{print $2}')
+if [ "$active_win_id" = "0" ]; then
+    active_win_id=""
+fi
+
+echo active_win_id, $active_win_id
+
+# get list of all windows matching with the class above
+win_list=$(wmctrl -x -l | grep  $win_class | awk '{print $1}' )
+
+echo win_list, $win_list
+
+# get next window to focus on
+switch_to=$(echo $win_list | sed s/.*$active_win_id// | awk '{print $1}')
+
+# if the current window is the last in the list ... take the first one
+if [ "$switch_to" = '' ];then
+switch_to=$(echo $win_list | awk '{print $1}')
+fi
+
+echo switch_to, $switch_to
+
+# switch to window
+wmctrl -i -a $switch_to || $1
+
